@@ -10,43 +10,44 @@ class LanguageTranslationPage extends StatefulWidget {
 
 class _LanguageTranslationPageState extends State<LanguageTranslationPage> {
 
-  var languages = ['Hindi', 'English', 'French' , 'Japanese' , 'Spanish'];
-  String? originLanguage = 'From';
-  String? destinationLanguage = 'To';
+  static const Map<String, String> _languageMap = {
+    'English': 'en',
+    'Hindi': 'hi',
+    'French': 'fr',
+    'Japanese': 'ja',
+    'Spanish': 'es',
+  };
+
+  final List<String> languages = _languageMap.keys.toList();
+  String? originLanguage;
+  String? destinationLanguage;
   var output = '';
   TextEditingController languageController = TextEditingController();
 
-  void translate(String arc,String dest, String input) async {
-    GoogleTranslator translator = new GoogleTranslator();
-    var translation = await translator.translate(input, from: arc , to:dest);
-    setState(() {
-      output = translation.text.toString();
-    });
-
-    if (arc =='--' || dest == '--'){
+  void translate(String srcCode, String destCode, String input) async {
+    if (srcCode == '--' || destCode == '--' || input.trim().isEmpty) {
       setState(() {
-        output = 'Failed to translate';
+        output = 'Please select both languages and enter some text.';
+      });
+      return;
+    }
+
+    try {
+      final translator = GoogleTranslator();
+      var translation = await translator.translate(input, from: srcCode, to: destCode);
+      setState(() {
+        output = translation.text.toString();
+      });
+    } catch (e) {
+      setState(() {
+        output = 'Failed to translate: ${e.toString()}';
       });
     }
   }
 
-  String getLanguageCode(String language){
-    if(language=='English'){
-      return 'en';
-    }
-    else if(language=='Hindi') {
-      return 'hi';
-    }
-    else if (language=='French'){
-      return 'fr';
-    }
-    else if (language=='Japanese'){
-      return 'ja';
-    }
-    else if (language=='Spanish'){
-      return 'es';
-    }
-    return '--';
+  String getLanguageCode(String? language) {
+    if (language == null) return '--';
+    return _languageMap[language] ?? '--';
   }
 
   @override
@@ -110,7 +111,9 @@ class _LanguageTranslationPageState extends State<LanguageTranslationPage> {
                     dropdownColor: Colors.white,
                     icon: const Icon(Icons.keyboard_arrow_down),
                     items: languages.map((String dropDownStringItem){
-                      return DropdownMenuItem<String>(child: Text(dropDownStringItem),value: dropDownStringItem,
+                      return DropdownMenuItem<String>(
+                        value: dropDownStringItem,
+                        child: Text(dropDownStringItem),
                       );
                     }).toList(),
                     onChanged: (String? value){
