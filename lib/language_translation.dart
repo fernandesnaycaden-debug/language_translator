@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:translator/translator.dart';
 
 class LanguageTranslationPage extends StatefulWidget {
@@ -49,6 +51,44 @@ class _LanguageTranslationPageState extends State<LanguageTranslationPage> {
   String getLanguageCode(String? language) {
     if (language == null) return '--';
     return _languageMap[language] ?? '--';
+  }
+
+  Future<void> _scanTextFromImage(ImageSource source) async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: source);
+    if (image == null) return;
+
+    final inputImage = InputImage.fromFilePath(image.path);
+    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Processing image and scanning text...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      
+      setState(() {
+        languageController.text = recognizedText.text;
+        output = ''; // Clear prior output
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to read text: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      await textRecognizer.close();
+    }
   }
 
   @override
@@ -200,31 +240,58 @@ class _LanguageTranslationPageState extends State<LanguageTranslationPage> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                   ),
-                  child: TextFormField(
-                    controller: languageController,
-                    maxLines: 5,
-                    minLines: 3,
-                    cursorColor: const Color(0xFF6C63FF),
-                    style: const TextStyle(color: Colors.white, fontSize: 17),
-                    decoration: InputDecoration(
-                      hintText: 'Type your text here...',
-                      hintStyle: const TextStyle(color: Colors.white38),
-                      border: InputBorder.none,
-                      suffixIcon: languageController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, color: Colors.white54),
-                              onPressed: () {
-                                languageController.clear();
-                                setState(() {
-                                  output = '';
-                                });
-                              },
-                            )
-                          : null,
-                    ),
-                    onChanged: (val) {
-                      setState(() {});
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
+                        controller: languageController,
+                        maxLines: 5,
+                        minLines: 3,
+                        cursorColor: const Color(0xFF6C63FF),
+                        style: const TextStyle(color: Colors.white, fontSize: 17),
+                        decoration: InputDecoration(
+                          hintText: 'Type your text here...',
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          border: InputBorder.none,
+                          suffixIcon: languageController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded, color: Colors.white54),
+                                  onPressed: () {
+                                    languageController.clear();
+                                    setState(() {
+                                      output = '';
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (val) {
+                          setState(() {});
+                        },
+                      ),
+                      const Divider(color: Colors.white12, height: 1),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'Scan Image:',
+                            style: TextStyle(color: Colors.white38, fontSize: 13),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.camera_alt_rounded, color: Colors.white70, size: 20),
+                            tooltip: 'Scan using Camera',
+                            onPressed: () => _scanTextFromImage(ImageSource.camera),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.image_search_rounded, color: Colors.white70, size: 20),
+                            tooltip: 'Scan from Gallery',
+                            onPressed: () => _scanTextFromImage(ImageSource.gallery),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 
